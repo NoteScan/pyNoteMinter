@@ -2,7 +2,6 @@ import argparse
 import cmd
 import time
 import os
-import io
 import sys
 import shlex
 import qrcode
@@ -105,12 +104,15 @@ class CommandLineWallet(cmd.Cmd):
                 print('Mnemonic:', result['mnemonic'])
             print('mainAddress:', result['currentAccount'].main_address.address)
             print('( Please deposit some BTC to this address for using as gas fee. )')
-            qr = qrcode.QRCode()
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=1,
+                border=1,
+            )
             qr.add_data(result['currentAccount'].main_address.address)
-            f = io.StringIO()
-            qr.print_ascii(out=f)
-            f.seek(0)
-            print(f.read())
+            qr.make(fit=True)
+            print(qr.print_ascii(tty=False, invert=True))
             print('tokenAddress:', result['currentAccount'].token_address.address)
         except SystemExit:
             pass
@@ -127,9 +129,11 @@ class CommandLineWallet(cmd.Cmd):
         parser.add_argument('--bitwork', type=str, default='20', help='Bitwork, default=20')
         parser.add_argument('--stop', type=bool, default=False, help='Stop loop on fail, default=False')
         parser.add_argument('--half', type=bool, default=True, help='Auto halving, default=True')
+        parser.add_argument('--feerate', type=str, default='avg', help='Feerate, default=avg, options: avg, fast, slow')
 
         try:
             parsed_args = parser.parse_args(shlex.split(args))
+            print('Arguments ', parsed_args)
             if not self.current_wallet:
                 print("No wallet selected")
                 return
@@ -140,7 +144,11 @@ class CommandLineWallet(cmd.Cmd):
 
             dec = int(token_info['dec'])
             lim = int(token_info['lim'])
-            max = int(token_info['max'])
+            supply = int(token_info['max'])
+            if parsed_args.feerate not in ['avg', 'fast', 'slow']:
+                print("Invalid feerate")
+                return
+            fee_arg = parsed_args.feerate + 'Fee'
                     
             if parsed_args.amount == 0:
                 amount = lim
@@ -154,18 +162,20 @@ class CommandLineWallet(cmd.Cmd):
             while n < parsed_args.loop:
                 print(f"Minting {parsed_args.tick} {n+1}/{parsed_args.loop}...")
                 try:
+                    fee_rates = self.current_wallet.get_fee_per_kb()
                     result = mint_token(self.current_wallet,
                                         parsed_args.tick,
                                         amount,
-                                        parsed_args.bitwork)
+                                        parsed_args.bitwork,
+                                        fee_rates[fee_arg])
                     print(result)
                     if result['success']:
                         n += 1
                     elif parsed_args.stop:
                         break
                     elif parsed_args.half and 'code' in result['error'] and result['error']['code'] == 400:
-                        if max - int(result['error']['message']['total']) < amount:
-                            amount = max - int(result['error']['message']['total'])
+                        if supply - int(result['error']['message']['total']) < amount:
+                            amount = supply - int(result['error']['message']['total'])
                         else:
                             amount /= 2
                         print(f"Auto halving amount to {amount / (10 ** dec)}")

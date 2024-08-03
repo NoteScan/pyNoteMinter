@@ -76,3 +76,7 @@ Based on [pyNoteWallet](https://github.com/NoteScan/pyNoteWallet), pyNoteMinter 
 
 - `--bitwork xxx`
   - Replaces the default bitwork value of 20 with the specified value.
+
+- `--feerate slow` or `--feerate fast`
+  - Replaces the default feerate value of avg with the specified value.
+  

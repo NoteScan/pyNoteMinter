@@ -2,10 +2,9 @@ import sys
 from utils import string_to_hexstring, hash256
 from constants import MAX_LOCKTIME
 
-def mint_token(wallet, tick, amount, bitwork='20'):
+def mint_token(wallet, tick, amount, bitwork='20', fee_rate=None):
     note_note = None
     pay_notes = None
-    fee_rate = None
     result = None
     locktime = 0  # increase locktime to change TX
 
