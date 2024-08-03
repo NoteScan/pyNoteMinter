@@ -112,7 +112,7 @@ class CommandLineWallet(cmd.Cmd):
             )
             qr.add_data(result['currentAccount'].main_address.address)
             qr.make(fit=True)
-            print(qr.print_ascii(tty=False, invert=True))
+            qr.print_ascii(tty=False, invert=True)
             print('tokenAddress:', result['currentAccount'].token_address.address)
         except SystemExit:
             pass
