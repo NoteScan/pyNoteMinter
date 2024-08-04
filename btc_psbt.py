@@ -1,5 +1,7 @@
 from typing import List
 import struct
+import sys
+import copy
 
 from bitcoinutils.setup import setup
 from bitcoinutils.keys import PrivateKey
@@ -17,8 +19,8 @@ from btc_notes import generate_p2tr_note_info
 from n_types import IUtxo, ISendToAddress, AddressType, NotePayload
 from config import MIN_SATOSHIS
 
-from utils import to_x_only
-from constants import MAX_SEQUENCE
+from utils import to_x_only, hash256
+from constants import MAX_SEQUENCE, MAX_LOCKTIME
 
 # Constants
 EMPTY_BUFFER = b''
@@ -387,7 +389,8 @@ def create_p2tr_note_psbt(private_key,
                           change: str,
                           network: str,
                           fee_rate: int,
-                          fee: int = 1000):
+                          fee: int = 1000,
+                          bitwork = None):
 
     pubkey = private_key.get_public_key().to_hex()
     p2note = generate_p2tr_note_info(pubkey, network)
@@ -445,64 +448,67 @@ def create_p2tr_note_psbt(private_key,
         psbt_out.append(PsbtOut())
         tx_out.append(TxOut(value, ScriptPubKey.from_address(change)))
 
-    psbt = Psbt(tx=Tx(version=2, lock_time=note_payload.locktime, vin=tx_in, vout=tx_out),
+    locktime = note_payload.locktime
+
+    psbt = Psbt(tx=Tx(version=2, lock_time=locktime, vin=tx_in, vout=tx_out),
                 inputs=psbt_in, outputs=psbt_out, hd_key_paths={}, version=0)
+    psbt_bak = copy.deepcopy(psbt)
 
-    # Sign inputs
-    for i, note_utxo in enumerate(note_utxos):
-        if note_utxo.private_key_wif is not None:
-            privkey = PrivateKey(note_utxo.private_key_wif)
+    while locktime < MAX_LOCKTIME:
+        # Sign inputs
+        for i in range(len(psbt.inputs)):
+            sign_psbt_input(private_key, psbt, i)
+        script_solution = [
+            list(psbt.inputs[0].taproot_script_spend_signatures.values())[0],
+            bytes.fromhex(note_payload.data0),
+            bytes.fromhex(note_payload.data1),
+            bytes.fromhex(note_payload.data2),
+            bytes.fromhex(note_payload.data3),
+            bytes.fromhex(note_payload.data4),
+        ]
+        script_solution.append(p2note['noteRedeem']['output'])
+        script_solution.append(p2note['noteP2TR']['witness'])
+         # Finalize PSBT
+        psbt.inputs[0].final_script_witness = witness.Witness(script_solution)
+        psbt.inputs[0].taproot_script_spend_signatures = {}
+        psbt.inputs[0].taproot_leaf_scripts = {}
+        psbt.inputs[0].partial_sigs = {}
+        psbt.inputs[0].sig_hash_type = None
+        psbt.inputs[0].redeem_script = b""
+        psbt.inputs[0].witness_script = b""
+        psbt.inputs[0].hd_key_paths = {}
+
+        for i in range(1, len(psbt.inputs)):
+            if psbt.inputs[i].partial_sigs != {}:
+                psbt.inputs[i].final_script_witness = witness.Witness([
+                    list(psbt.inputs[i].partial_sigs.values())[0],
+                    list(psbt.inputs[i].partial_sigs.keys())[0]])
+            elif psbt.inputs[i].taproot_leaf_scripts != {}:
+                psbt.inputs[i].final_script_witness = witness.Witness([
+                    list(psbt.inputs[i].taproot_script_spend_signatures.values())[0],
+                    list(psbt.inputs[i].taproot_leaf_scripts.values())[0][0],
+                    list(psbt.inputs[i].taproot_leaf_scripts.keys())[0]])
+
+            psbt.inputs[i].partial_sigs = {}
+            psbt.inputs[i].sig_hash_type = None
+            psbt.inputs[i].redeem_script = b""
+            psbt.inputs[i].witness_script = b""
+            psbt.inputs[i].hd_key_paths = {}
+
+            psbt.inputs[i].taproot_script_spend_signatures = {}
+            psbt.inputs[i].taproot_leaf_scripts = {}
+        tx_ret = extract_tx(psbt)
+        if bitwork is None:
+            return tx_ret
         else:
-            privkey = private_key
-        sign_psbt_input(privkey, psbt, i)
-
-    for i in range(len(note_utxos), len(psbt.inputs)):
-        pay_utxo = pay_utxos[i - len(note_utxos)]
-        if pay_utxo.private_key_wif is not None:
-            privkey = PrivateKey(pay_utxo.private_key_wif)
-        else:
-            privkey = private_key
-        sign_psbt_input(privkey, psbt, i)
-
-    script_solution = [
-        list(psbt.inputs[0].taproot_script_spend_signatures.values())[0],
-        bytes.fromhex(note_payload.data0),
-        bytes.fromhex(note_payload.data1),
-        bytes.fromhex(note_payload.data2),
-        bytes.fromhex(note_payload.data3),
-        bytes.fromhex(note_payload.data4),
-    ]
-    script_solution.append(p2note['noteRedeem']['output'])
-    script_solution.append(p2note['noteP2TR']['witness'])
-
-    # Finalize PSBT
-    psbt.inputs[0].final_script_witness = witness.Witness(script_solution)
-    psbt.inputs[0].taproot_script_spend_signatures = {}
-    psbt.inputs[0].taproot_leaf_scripts = {}
-    psbt.inputs[0].partial_sigs = {}
-    psbt.inputs[0].sig_hash_type = None
-    psbt.inputs[0].redeem_script = b""
-    psbt.inputs[0].witness_script = b""
-    psbt.inputs[0].hd_key_paths = {}
-
-    for i in range(1, len(psbt.inputs)):
-        if (psbt.inputs[i].partial_sigs != {}):
-            psbt.inputs[i].final_script_witness = witness.Witness([
-                list(psbt.inputs[i].partial_sigs.values())[0],
-                list(psbt.inputs[i].partial_sigs.keys())[0]])
-        elif psbt.inputs[i].taproot_leaf_scripts != {}:
-            psbt.inputs[i].final_script_witness = witness.Witness([
-                list(psbt.inputs[i].taproot_script_spend_signatures.values())[0], 
-                list(psbt.inputs[i].taproot_leaf_scripts.values())[0][0], 
-                list(psbt.inputs[i].taproot_leaf_scripts.keys())[0]])
-            
-        psbt.inputs[i].partial_sigs = {}
-        psbt.inputs[i].sig_hash_type = None
-        psbt.inputs[i].redeem_script = b""
-        psbt.inputs[i].witness_script = b""
-        psbt.inputs[i].hd_key_paths = {}
-
-        psbt.inputs[i].taproot_script_spend_signatures = {}
-        psbt.inputs[i].taproot_leaf_scripts = {}
-
-    return extract_tx(psbt)
+            tx_hash256 = hash256(tx_ret.serialize(include_witness=True, check_validity=False))
+            if tx_hash256.startswith(bitwork):
+                return tx_ret
+            else:
+                locktime += 1
+                psbt_bak.tx.lock_time = locktime
+                psbt = copy.deepcopy(psbt_bak)
+            if locktime % 1000 == 0:
+                sys.stdout.write(str(locktime) + '\r')
+                sys.stdout.flush()
+    return None

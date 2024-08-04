@@ -185,7 +185,8 @@ class BTCWallet():
                               to_addresses:ISendToAddress,
                               note_utxos:List[IUtxo],
                               pay_utxos:List[IUtxo]=None,
-                              fee_rate=None):
+                              fee_rate=None,
+                              bitwork=None):
         if pay_utxos is None:
             pay_utxos = self.fetch_all_account_utxos()
         if fee_rate is None:
@@ -199,8 +200,7 @@ class BTCWallet():
 
         real_fee = int((estimated_size * fee_rate) / 1000 + 1)
 
-        final_tx = create_p2tr_note_psbt(
-            private_key,
+        final_tx = create_p2tr_note_psbt(private_key,
             payload,
             note_utxos,
             pay_utxos,
@@ -208,7 +208,8 @@ class BTCWallet():
             self.current_account.main_address.address,
             network,
             fee_rate,
-            real_fee
+            real_fee,
+            bitwork
         )
         return ITransaction(
             tx_id=final_tx.id,
@@ -242,7 +243,8 @@ class BTCWallet():
                                       to_address:ISendToAddress=None,
                                       note_utxo:IUtxo=None,
                                       pay_utxos:List[IUtxo]=None,
-                                      fee_rate=None):
+                                      fee_rate=None,
+                                      bitwork=None):
         if note_utxo is None:
             commit_address = self.current_account.token_address
             note_utxos = self.urchain.utxos([commit_address.script_hash])
@@ -271,7 +273,8 @@ class BTCWallet():
             [ISendToAddress(address=to_address, amount=MIN_SATOSHIS)],
             [note_utxo],
             pay_utxos,
-            fee_rate
+            fee_rate,
+            bitwork
         )
         result.note_utxo = result.note_utxos[0] if result.note_utxos else None
         return result
