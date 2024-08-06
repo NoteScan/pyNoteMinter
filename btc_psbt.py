@@ -19,7 +19,7 @@ from btc_notes import generate_p2tr_note_info
 from n_types import IUtxo, ISendToAddress, AddressType, NotePayload
 from config import MIN_SATOSHIS
 
-from utils import to_x_only, hash256
+from utils import hash256
 from constants import MAX_SEQUENCE, MAX_LOCKTIME
 
 # Constants

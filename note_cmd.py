@@ -173,7 +173,7 @@ class CommandLineWallet(cmd.Cmd):
                         n += 1
                     elif parsed_args.stop:
                         break
-                    elif parsed_args.half and 'code' in result['error'] and result['error']['code'] == 400:
+                    elif parsed_args.half and isinstance(result['error'], dict) and 'code' in result['error'] and result['error']['code'] == 400:
                         if supply - int(result['error']['message']['total']) < amount:
                             amount = supply - int(result['error']['message']['total'])
                         else:

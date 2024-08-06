@@ -1,5 +1,4 @@
 from typing import List
-import os
 import platform
 import binascii
 import hashlib

@@ -1,6 +1,4 @@
-from typing import List
 import hashlib
-import os
 from bitcointx import select_chain_params, set_custom_secp256k1_path
 from bitcointx.wallet import P2TRBitcoinTestnetAddress, TaprootScriptTree, P2TRBitcoinAddress
 from bitcointx.core.key import XOnlyPubKey

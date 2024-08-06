@@ -7,7 +7,7 @@ import os
 
 MIN_SATOSHIS = 546
 
-load_dotenv()
+load_dotenv('./.env')
 
 WALLET_MNEMONIC = os.getenv('WALLET_MNEMONIC', '').strip('"')
 
