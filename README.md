@@ -17,12 +17,59 @@ Based on [pyNoteWallet](https://github.com/NoteScan/pyNoteWallet), pyNoteMinter 
 
    - In File Explorer, double-click `install.bat` to install the necessary modules.
 
+## Installation (MAC OSX)
+1. **Download and Install Python (Python 3.10 or later)**
+
+   - [python.org](https://www.python.org/downloads/).
+2. **Install brew**
+   - [Homebrew](https://brew.sh/).
+
+3. **Install Required Modules**
+   - In Teminal Window, enter:
+    ```
+    brew install secp256k1
+    git clone pyNoteMinter
+    cd pyNoteMinter
+    pip3 install -r requirements.txt
+    ```
+
+## Installation (Linux - Ubuntu 22.04)
+    ```
+    sudo apt update
+    sudo apt -y upgrade
+    sudo apt -y install git python3 python3-pip libsecp256k1-dev libssl-dev
+    git clone https://github.com/NoteScan/pyNoteMinter
+    cd pyNoteMinter
+    pip3 install -r requirements.txt
+    ```
+
+## Installation (Linux - Debian 12)
+    ```
+    sudo apt update
+    sudo apt -y upgrade
+    sudo apt -y install git python3 python3-pip libsecp256k1-dev libssl-dev python3.11-venv
+    git clone https://github.com/NoteScan/pyNoteMinter
+    cd pyNoteMinter
+    python3 -m venv ./note_venv
+    ./note_venv/bin/pip3 install -r requirements.txt
+    ```
+## Installation (Linux - Others)
+   You may need install Python 3.10 or later by yourself if it not exist on your system.
+
 ## Quick Start
 
 1. **Minting on BTC Network**
-
+   
+   Windows System
    - For minting on the BTC mainnet, double-click `mint_livenet.bat`.
    - For minting on the BTC testnet, double-click `mint_testnet.bat`.
+
+   MAC OSX and Linux:
+    ```
+    python3 note_cmd.py livenet
+    ```
+   Insteed livenet with testnet for mint on the BTC testnet.
+
 
 2. **Wallet Information**
 

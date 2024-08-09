@@ -1,5 +1,5 @@
 import hashlib
-from bitcointx import select_chain_params, set_custom_secp256k1_path
+from bitcointx import select_chain_params
 from bitcointx.wallet import P2TRBitcoinTestnetAddress, TaprootScriptTree, P2TRBitcoinAddress
 from bitcointx.core.key import XOnlyPubKey
 from bitcointx.core import x
@@ -10,7 +10,7 @@ from bitcoinutils.setup import setup
 from constants import NOTE_PROTOCOL_ENVELOPE_ID
 from n_types import IAddressObject, AddressType
 
-from utils import to_x_only, get_dll_suffix
+from utils import to_x_only, load_secp256k1
 
 def build_note_script(x_only_pubkey):
     """
@@ -67,7 +67,7 @@ def generate_p2tr_note_info(pubkey:str, network='mainnet'):
     note_script = build_note_script(x_only_pubkey.hex())
     p2pk_script = CScript([x(x_only_pubkey.hex()), OP_CHECKSIG], name='p2pk_script')
 
-    set_custom_secp256k1_path('./secp256k1' + get_dll_suffix())
+    load_secp256k1()
 
     obj_pubkey = XOnlyPubKey(x_only_pubkey)
     root_tree = TaprootScriptTree([note_script, p2pk_script],

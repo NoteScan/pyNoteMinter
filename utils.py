@@ -2,6 +2,10 @@ from typing import List
 import platform
 import binascii
 import hashlib
+import os
+from ctypes import *
+from ctypes.util import find_library
+from bitcointx import set_custom_secp256k1_path
 from constants import MAX_STANDARD_STACK_ITEM_SIZE, MAX_DATA_SEGMENTS
 
 def to_x_only(pubkey: bytes):
@@ -67,11 +71,15 @@ def sort_dict_by_key(d):
 def hash256(data):
     return hashlib.sha256(hashlib.sha256(data).digest()).hexdigest()
 
-def get_dll_suffix():
+def load_secp256k1():
+    path = find_library('secp256k1')
     system = platform.system()
     if system == 'Windows':
-        return '.dll'
-    elif system in ('Linux', 'Darwin'):  # Darwin is macOS
-        return '.so'
-    else:
-        raise OSError(f"Unsupported operating system: {system}")
+        if path is None:
+            set_custom_secp256k1_path('./secp256k1.dll')
+    elif system in ('Linux'):  # Linux
+        path = './' + path
+        if os.path.exists(path):
+            set_custom_secp256k1_path(path)
+    elif system in ('Darwin'):  # Darwin is macOS
+        pass
